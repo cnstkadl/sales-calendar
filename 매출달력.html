@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="매출 달력">
+  <title>매출 달력</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+      font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+      color: #e8e8f0;
+      padding: 24px 16px;
+    }
+    #app { max-width: 700px; margin: 0 auto; }
+
+    .header { margin-bottom: 28px; }
+    .header-sub { font-size: 11px; letter-spacing: 4px; color: #7b8cde; text-transform: uppercase; margin-bottom: 4px; }
+    .header-title { font-size: 28px; font-weight: 800; letter-spacing: -1px; color: #fff; }
+    .header-formula { font-size: 11px; color: #334; margin-top: 5px; }
+
+    .month-nav { display: flex; align-items: center; justify-content: center; gap: 24px; margin-bottom: 20px; }
+    .nav-btn {
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px; color: #fff; font-size: 22px;
+      width: 40px; height: 40px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .month-label { font-size: 22px; font-weight: 700; color: #fff; min-width: 130px; text-align: center; }
+
+    .day-header { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-bottom: 4px; }
+    .day-name { text-align: center; font-size: 12px; font-weight: 700; padding: 6px 0; letter-spacing: 1px; color: #666; }
+    .day-name.sat { color: #7b8cde; }
+
+    .calendar { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+    .cell {
+      border-radius: 12px; padding: 8px 6px; min-height: 72px;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.04);
+      cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;
+      transition: background 0.15s;
+    }
+    .cell.has-val { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); }
+    .cell.today {
+      background: linear-gradient(135deg, rgba(123,140,222,0.3), rgba(123,140,222,0.12));
+      border: 1.5px solid rgba(123,140,222,0.6);
+    }
+    .cell-empty { border-radius: 12px; min-height: 72px; }
+
+    .cell-date { font-size: 13px; font-weight: 500; align-self: flex-start; color: #ccc; }
+    .cell-date.today { font-weight: 800; color: #9baeff; }
+    .cell-date.sat { color: #7b8cde; }
+
+    .cell-val {
+      font-size: 10px; color: #a8f5b0; font-weight: 700;
+      text-align: right; width: 100%; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .cell-plus { font-size: 18px; color: rgba(255,255,255,0.1); margin-top: 2px; }
+
+    .cell-input {
+      width: 100%; background: rgba(123,140,222,0.2);
+      border: 1px solid #7b8cde; border-radius: 6px;
+      color: #fff; font-size: 10px; padding: 3px 5px;
+      text-align: right; outline: none; font-family: inherit;
+    }
+
+    .summary {
+      margin-top: 24px; border-radius: 20px;
+      background: linear-gradient(135deg, rgba(123,140,222,0.18), rgba(123,140,222,0.05));
+      border: 1px solid rgba(123,140,222,0.25);
+      padding: 24px 20px;
+    }
+    .summary-total { text-align: center; margin-bottom: 20px; }
+    .summary-total-label { font-size: 12px; color: #888; letter-spacing: 1px; margin-bottom: 6px; }
+    .summary-total-val { font-size: 26px; font-weight: 900; color: #fff; letter-spacing: -1px; }
+
+    .summary-rows { border-top: 1px solid rgba(255,255,255,0.07); padding-top: 16px; margin-bottom: 16px; }
+    .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
+    .summary-row-label { font-size: 12px; color: #777; }
+    .summary-row-val { font-size: 13px; font-weight: 700; }
+
+    .summary-final {
+      border-top: 1px solid rgba(168,245,176,0.2); padding-top: 16px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .summary-final-label { font-size: 14px; font-weight: 700; color: #a8f5b0; }
+    .summary-final-val { font-size: 22px; font-weight: 900; color: #a8f5b0; letter-spacing: -0.5px; }
+
+    .hint { text-align: center; margin-top: 14px; font-size: 12px; color: rgba(255,255,255,0.2); }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="header-sub">SALES TRACKER</div>
+    <div class="header-title">매출 달력</div>
+    <div class="header-formula">매출 × 0.9 × 0.7 × 0.967</div>
+  </div>
+
+  <div class="month-nav">
+    <button class="nav-btn" id="prevBtn">‹</button>
+    <div class="month-label" id="monthLabel"></div>
+    <button class="nav-btn" id="nextBtn">›</button>
+  </div>
+
+  <div class="day-header">
+    <div class="day-name">월</div>
+    <div class="day-name">화</div>
+    <div class="day-name">수</div>
+    <div class="day-name">목</div>
+    <div class="day-name">금</div>
+    <div class="day-name sat">토</div>
+  </div>
+
+  <div class="calendar" id="calendar"></div>
+
+  <div class="summary">
+    <div class="summary-total">
+      <div class="summary-total-label">이번 달 총 매출</div>
+      <div class="summary-total-val" id="totalVal">—</div>
+    </div>
+    <div class="summary-rows">
+      <div class="summary-row">
+        <div class="summary-row-label">① 부가세 10%</div>
+        <div class="summary-row-val" style="color:#ff8fa3" id="vatVal">—</div>
+      </div>
+      <div class="summary-row">
+        <div class="summary-row-label">② 상대방 몫 30%</div>
+        <div class="summary-row-val" style="color:#ffb86c" id="shareVal">—</div>
+      </div>
+      <div class="summary-row">
+        <div class="summary-row-label">③ 원천징수 3.3%</div>
+        <div class="summary-row-val" style="color:#f8c06e" id="withholdVal">—</div>
+      </div>
+    </div>
+    <div class="summary-final">
+      <div class="summary-final-label">최종 수령액</div>
+      <div class="summary-final-val" id="finalVal">—</div>
+    </div>
+  </div>
+
+  <div class="hint">날짜를 탭해서 매출 입력 · 다시 탭하면 수정</div>
+</div>
+
+<script>
+  const FORMULA = 0.9 * 0.7 * 0.967;
+  const MONTH_NAMES = ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"];
+
+  const today = new Date();
+  let year = today.getFullYear();
+  let month = today.getMonth();
+  let editing = null;
+
+  // localStorage에서 데이터 불러오기
+  let sales = JSON.parse(localStorage.getItem('sales') || '{}');
+
+  function saveSales() {
+    localStorage.setItem('sales', JSON.stringify(sales));
+  }
+
+  function dateKey(y, m, d) {
+    return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  }
+
+  function formatKRW(n) {
+    return n.toLocaleString('ko-KR') + '원';
+  }
+
+  function parseNum(str) {
+    const n = Number(str.replace(/[^0-9]/g, ''));
+    return isNaN(n) ? 0 : n;
+  }
+
+  function render() {
+    // 월 라벨
+    document.getElementById('monthLabel').textContent = `${year}년 ${MONTH_NAMES[month]}`;
+
+    const todayStr = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
+    const daysInMonth = new Date(year, month+1, 0).getDate();
+    const rawFirstDay = new Date(year, month, 1).getDay();
+    const firstDayMon = (rawFirstDay + 6) % 7;
+    const skipFirst = firstDayMon === 6 ? 0 : firstDayMon;
+
+    const cal = document.getElementById('calendar');
+    cal.innerHTML = '';
+
+    // 빈칸
+    for (let i = 0; i < skipFirst; i++) {
+      const empty = document.createElement('div');
+      empty.className = 'cell-empty';
+      cal.appendChild(empty);
+    }
+
+    // 날짜 셀
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(year, month, d);
+      const dow = date.getDay();
+      if (dow === 0) continue; // 일요일 제외
+
+      const dk = dateKey(year, month, d);
+      const val = sales[dk];
+      const isToday = dk === todayStr;
+      const isSat = dow === 6;
+      const isEdit = editing === dk;
+
+      const cell = document.createElement('div');
+      cell.className = 'cell' + (isToday ? ' today' : '') + (val ? ' has-val' : '');
+
+      // 날짜 숫자
+      const dateDiv = document.createElement('div');
+      dateDiv.className = 'cell-date' + (isToday ? ' today' : '') + (isSat ? ' sat' : '');
+      dateDiv.textContent = d;
+      cell.appendChild(dateDiv);
+
+      if (isEdit) {
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.inputMode = 'numeric';
+        input.className = 'cell-input';
+        input.placeholder = '0';
+        input.value = val || '';
+        cell.appendChild(input);
+
+        setTimeout(() => input.focus(), 50);
+
+        input.addEventListener('blur', () => commitEdit(dk, input.value));
+        input.addEventListener('keydown', e => {
+          if (e.key === 'Enter') { input.blur(); }
+          if (e.key === 'Escape') { editing = null; render(); }
+        });
+        input.addEventListener('click', e => e.stopPropagation());
+      } else if (val) {
+        const valDiv = document.createElement('div');
+        valDiv.className = 'cell-val';
+        valDiv.textContent = val.toLocaleString('ko-KR');
+        cell.appendChild(valDiv);
+      } else {
+        const plus = document.createElement('div');
+        plus.className = 'cell-plus';
+        plus.textContent = '+';
+        cell.appendChild(plus);
+      }
+
+      cell.addEventListener('click', () => {
+        if (editing !== dk) {
+          editing = dk;
+          render();
+        }
+      });
+
+      cal.appendChild(cell);
+    }
+
+    // 합계 계산
+    const monthPrefix = `${year}-${String(month+1).padStart(2,'0')}`;
+    const monthTotal = Object.entries(sales).reduce((sum, [k, v]) =>
+      k.startsWith(monthPrefix) ? sum + v : sum, 0);
+
+    const myAmount = Math.round(monthTotal * FORMULA);
+    const afterVat = Math.round(monthTotal * 0.9);
+    const myShare = Math.round(afterVat * 0.7);
+    const withholding = myShare - myAmount;
+
+    document.getElementById('totalVal').textContent = monthTotal ? formatKRW(monthTotal) : '—';
+    document.getElementById('vatVal').textContent = monthTotal ? '-' + formatKRW(monthTotal - afterVat) : '—';
+    document.getElementById('shareVal').textContent = monthTotal ? '-' + formatKRW(afterVat - myShare) : '—';
+    document.getElementById('withholdVal').textContent = monthTotal ? '-' + formatKRW(withholding) : '—';
+    document.getElementById('finalVal').textContent = monthTotal ? formatKRW(myAmount) : '—';
+  }
+
+  function commitEdit(dk, inputVal) {
+    const val = parseNum(inputVal);
+    if (val === 0) delete sales[dk];
+    else sales[dk] = val;
+    saveSales();
+    editing = null;
+    render();
+  }
+
+  document.getElementById('prevBtn').addEventListener('click', () => {
+    if (month === 0) { year--; month = 11; } else month--;
+    render();
+  });
+  document.getElementById('nextBtn').addEventListener('click', () => {
+    if (month === 11) { year++; month = 0; } else month++;
+    render();
+  });
+
+  render();
+</script>
+</body>
+</html>
